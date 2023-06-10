@@ -133,8 +133,9 @@ def convert(image_dir_path,
                    'categories': coco_categories,
                    'annotations': coco_annotations}
 
-    with open(Path(output_file_path).as_posix(), 'w') as file_stream:
-        json.dump(coco_output, file_stream, indent=4)
+    if output_file_path is not None:
+        with open(Path(output_file_path).as_posix(), 'w') as file_stream:
+            json.dump(coco_output, file_stream, indent=4)
 
     return coco_output
 
