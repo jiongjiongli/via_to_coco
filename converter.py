@@ -149,8 +149,7 @@ def main():
     convert(image_dir_path,
             via_ann_file_path,
             category_names,
-            output_file_path=output_file_path,
-            first_category_index=1)
+            output_file_path=output_file_path)
 
 
 if __name__ == '__main__':
