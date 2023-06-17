@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import shutil
 
 from shapely.geometry import Polygon
 from PIL import Image
@@ -45,7 +46,8 @@ class CocoFormat:
 def convert(image_dir_path,
             via_ann_file_path,
             category_names,
-            output_file_path=None,
+            output_images_dir_path=None,
+            output_ann_file_path=None,
             first_category_index=1):
     category_dict = {}
 
@@ -70,6 +72,14 @@ def convert(image_dir_path,
     for via_ann_key, via_ann in via_ann_data.items():
         image_file_name = via_ann['filename']
         image_file_path = image_dir_path / image_file_name
+
+        assert image_file_path.exists(), r'Error! image_file_path {} not exist!'.format(image_file_path)
+
+        if output_images_dir_path is not None:
+            output_images_dir_path.mkdir(parents=True, exist_ok=True)
+
+            output_image_file_path = output_images_dir_path / image_file_path.name
+            shutil.copyfile(image_file_path.as_posix(), output_image_file_path.as_posix())
 
         with Image.open(image_file_path.as_posix()) as image:
             image_width, image_height = image.size
@@ -107,7 +117,8 @@ def convert(image_dir_path,
             points = [(x, y) for x, y in zip(all_points_x, all_points_y)]
             polygon = Polygon(points)
 
-            bbox = list(polygon.bounds)
+            x_min, y_min, x_max, y_max = polygon.bounds
+            bbox = [x_min, y_min, x_max - x_min, y_max - y_min]
 
             segmentation = []
 
@@ -133,24 +144,42 @@ def convert(image_dir_path,
                    'categories': coco_categories,
                    'annotations': coco_annotations}
 
-    if output_file_path is not None:
-        with open(Path(output_file_path).as_posix(), 'w') as file_stream:
+    if output_ann_file_path is not None:
+        output_ann_file_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(Path(output_ann_file_path).as_posix(), 'w') as file_stream:
             json.dump(coco_output, file_stream, indent=4)
 
     return coco_output
 
 
 def main():
-    image_dir_path = Path(r'D:/Data/cv/experiments/balloon_dataset/balloon/val')
-
-    via_ann_file_path = image_dir_path / 'via_region_data.json'
     category_names = ['balloon']
-    output_file_path = image_dir_path / 'test.json'
+    data_path_infos = [{
+                        'image_dir_path': r'data/balloon/train',
+                        'output_ann_file_name': 'trainval.json'
+                       },
+                       {
+                        'image_dir_path': r'data/balloon/val',
+                        'output_ann_file_name': 'test.json'
+                       }]
 
-    convert(image_dir_path,
-            via_ann_file_path,
-            category_names,
-            output_file_path=output_file_path)
+    outout_dir_path = Path('data/balloon_dataset')
+    output_images_dir_path = outout_dir_path / 'images'
+    output_ann_dir_path = outout_dir_path / 'annotations'
+
+    for data_path_info in data_path_infos:
+        image_dir_path = Path(data_path_info['image_dir_path'])
+        via_ann_file_path = image_dir_path / 'via_region_data.json'
+
+        output_ann_file_name = data_path_info['output_ann_file_name']
+        output_ann_file_path = output_ann_dir_path / output_ann_file_name
+
+        convert(image_dir_path,
+                via_ann_file_path,
+                category_names,
+                output_images_dir_path=output_images_dir_path,
+                output_ann_file_path=output_ann_file_path)
 
 
 if __name__ == '__main__':
